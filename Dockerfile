@@ -1,6 +1,5 @@
 FROM debian:bullseye
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
     lldb \
     python3 \
@@ -15,10 +14,9 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 COPY . .
 
-# Install requirements
 RUN pip install -r requirements.txt
 
-# Adding automatic import of the cpython-lldb extension to LLDB
+# Install the cpython_lldb extension and allow it to be loaded automatically on start of a new LLDB session
 RUN echo "command script import cpython_lldb" >> /root/.lldbinit && chmod +x /root/.lldbinit
 
 ENTRYPOINT ["bash"]
