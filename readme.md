@@ -132,3 +132,17 @@ After target process is ended, you will get pretty-formatted result:
 │ network_request   │ 1.82 ± 0.18                  │
 ╰───────────────────┴──────────────────────────────╯
 ```
+
+### ToDo
+- Add command to CLI that allows to change sampling_timeout dynamically.
+- Redesign `results` command, so that it'll show all target functions. Now it shows only functions, that were sampled at least once. Results should look like this (if `heavy_computation` was not sampled):
+```bash
+> Profiler stopped.
+╭───────────────────┬──────────────────────────────╮
+│ Function Name     │ Approximate execution time   │
+├───────────────────┼──────────────────────────────┤
+│ heavy_computation │ No Data Available            │
+│ disk_io           │ 2.01 ± 0.1789                │
+│ network_request   │ 1.82 ± 0.18                  │
+╰───────────────────┴──────────────────────────────╯
+```
