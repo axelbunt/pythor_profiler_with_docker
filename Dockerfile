@@ -17,6 +17,7 @@ COPY . .
 RUN pip install -r requirements.txt
 
 # Install the cpython_lldb extension and allow it to be loaded automatically on start of a new LLDB session
+# Official cpython_lldb installation guide: https://github.com/malor/cpython-lldb?tab=readme-ov-file#installation
 RUN echo "command script import cpython_lldb" >> /root/.lldbinit && chmod +x /root/.lldbinit
 
 ENTRYPOINT ["bash"]
