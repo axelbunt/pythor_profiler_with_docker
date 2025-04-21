@@ -32,7 +32,7 @@ class ProfilerController:
             pid (int): PID of process you want to profile.
             functions_to_trace (List[str]): List of functions you want to
                 profile in selected Python process.
-            sampling_timeout (float): Sampling timout in seconds. Profiler
+            sampling_timeout (float): Sampling timeout in seconds. Profiler
                 will take a sample of selected Python process one time in
                 *sampling_timeout* seconds.
         """
@@ -58,7 +58,7 @@ class ProfilerController:
         self.sampling_thread = threading.Thread(target=self.sample_loop)
         self.sampling_thread.start()
 
-    # SAMLING THREAD BEGIN
+    # SAMPLING THREAD BEGIN
     ##############################
     def sample_loop(self) -> None:
         """
@@ -184,7 +184,7 @@ class ProfilerController:
             return matches[-1]
         return "No function detected."
     ##############################
-    # SAMLING THREAD END
+    # SAMPLING THREAD END
 
     def add_functions_to_profile(self, functions_to_trace: List[str]) -> None:
         """
@@ -270,7 +270,7 @@ def build_parser() -> argparse.ArgumentParser:
                               help="List of functions you want to profile "
                               "in selected Python process.")
     start_parser.add_argument("-t", "--timeout", type=float,
-                              help="Custom sampling timout. Default is "
+                              help="Custom sampling timeout. Default is "
                               f"{DEFAULT_SAMPLING_TIMEOUT} s")
 
     stop_parser = subparsers.add_parser("stop",  # noqa: F841

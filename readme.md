@@ -50,6 +50,9 @@ docker build -t sample_profiler .
 
 docker run -it --cap-add=SYS_PTRACE --security-opt seccomp=unconfined sample_profiler
 ```
+> More info about parameters `--cap-add=SYS_PTRACE --security-opt seccomp=unconfined`:  
+https://github.com/rr-debugger/rr/wiki/Docker  
+https://docs.docker.com/engine/security/seccomp/
 
 In Docker container:
 ```bash
