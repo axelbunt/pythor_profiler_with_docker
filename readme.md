@@ -63,12 +63,12 @@ python3 main.py &  # Run main program in bachground. Here is example program.
 # [1] <pid>
 
 # Copy this pid and run
-python3 profiler.py start -p <pid> -f disk_io heavy_computation network_request
+python3 profiler/cli.py start -f disk_io heavy_computation network_request -p <pid>
 # Returns:
 # Sampling functions: {'heavy_computation', 'network_request', 'disk_io'}
 # Starting profiling process <pid> for functions: {'heavy_computation', 'network_request', 'disk_io'}
 # Entering Profiler CLI. Type commands or 'exit' to quit.
-# > 
+# ➤ Profiler > 
 ```
 
 After the profiler has started, you can interact with it live via the CLI by entering the following commands:

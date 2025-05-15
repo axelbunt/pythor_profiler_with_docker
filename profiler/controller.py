@@ -1,3 +1,7 @@
+"""Main profiler interface that manages tracing logic and handles commands
+from the CLI.
+"""
+
 import argparse
 from math import sqrt
 from tabulate import tabulate
@@ -9,8 +13,7 @@ import re
 import subprocess
 import sys
 
-
-DEFAULT_SAMPLING_TIMEOUT: float = 0.02  # in seconds
+from sampler import DEFAULT_SAMPLING_TIMEOUT
 
 
 class ProfilerController:
@@ -21,6 +24,35 @@ class ProfilerController:
         self.pid_to_trace: int = 0
         self.sampling_thread: threading.Thread = None
         self.sampling_timeout: float = DEFAULT_SAMPLING_TIMEOUT
+
+    def process_command(self, args: argparse.Namespace) -> None:
+        if args.command == "start":
+            self.start(pid=args.pid,
+                       functions_to_trace=args.func,
+                       sampling_timeout=args.timeout)
+
+        elif args.command == "stop":
+            self.stop()
+
+        elif args.command == "add":
+            self.add_functions_to_profile(args.func)
+
+        elif args.command == "remove":
+            self.remove_functions_from_profile(args.func)
+
+        elif args.command == "results":
+            self.write_output()
+
+        elif args.command == "status":
+            self.status()
+
+        elif args.command == "exit":
+            if self.running:
+                self.stop()
+            sys.exit(0)
+
+        else:
+            print("Invalid command.")
 
     def start(self, pid: int, functions_to_trace: List[str],
               sampling_timeout: float = None) -> None:
@@ -51,8 +83,10 @@ class ProfilerController:
             self.sampling_timeout = sampling_timeout
 
         self.add_functions_to_profile(functions_to_trace)
-        print(f"Starting profiling process {pid} "
-              f"for functions: {self.functions_to_profile}")
+        print(
+            f"Starting profiling process {pid} "
+            f"for functions: {self.functions_to_profile}"
+        )
 
         # Start collecting samples in a separate thread
         self.sampling_thread = threading.Thread(target=self.sample_loop)
@@ -101,7 +135,7 @@ class ProfilerController:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
         # Waiting for the LLDB to be ready to obtain new command.
         while True:
@@ -115,7 +149,7 @@ class ProfilerController:
         function is currently running).
 
         1. Interrupts the execution of the target process with
-           "process signal SIGINT" command (aka. Ctrl-C).
+            "process signal SIGINT" command (aka. Ctrl-C).
         2. Executes the `py-bt` command to retrieve the Python stack.
         3. Continues the process execution with the `process continue` command.
 
@@ -183,30 +217,30 @@ class ProfilerController:
         if matches:
             return matches[-1]
         return "No function detected."
+
     ##############################
     # SAMPLING THREAD END
 
-    def add_functions_to_profile(self, functions_to_trace: List[str]) -> None:
+    def add_functions_to_profile(self, func_to_add: List[str]) -> None:
         """
         Add a list of functions for tracing.
         """
-        self.functions_to_profile.update(functions_to_trace)
+        self.functions_to_profile.update(func_to_add)
         print("Sampling functions:", self.functions_to_profile)
 
-    def remove_functions_from_profile(self,
-                                      functions_ro_remove: List[str]) -> None:
+    def remove_functions_from_profile(self, func_to_remove: List[str]) -> None:
         """
         Remove a list of functions from tracing.
         """
-        self.functions_to_profile.difference_update(functions_ro_remove)
+        self.functions_to_profile.difference_update(func_to_remove)
         print("Sampling functions:", self.functions_to_profile)
 
     def write_output(self) -> None:
         """
         Get profiling results and print it in console.
         """
-        results = {"Function Name": [],
-                   "Approximate execution time": []}
+        # TODO: add "(s)" to "Approximate execution time"
+        results = {"Function Name": [], "Approximate execution time": []}
         function_counts = {}
 
         for entry in self.samples:
@@ -224,8 +258,7 @@ class ProfilerController:
             results["Function Name"].append(fn)
             results["Approximate execution time"].append(time_with_error)
 
-        print(tabulate(results, headers="keys",
-              tablefmt="rounded_outline"))
+        print(tabulate(results, headers="keys", tablefmt="rounded_outline"))
 
     def status(self) -> None:
         """
@@ -237,8 +270,8 @@ class ProfilerController:
         - *self.functions_to_profile*
         """
         print("===Profiler Status===")
-        print("Profiler is running." if self.running
-              else "Profiler is stopped.")
+        print("Profiler is running." if self.running else "Profiler is "
+              "stopped.")
         print(f"PID {self.pid_to_trace} exists:",
               psutil.pid_exists(self.pid_to_trace))
         print("Sampling thread:", self.sampling_thread)
@@ -254,105 +287,3 @@ class ProfilerController:
 
         print("Profiler stopped.")
         self.write_output()
-
-
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Profiler CLI")
-    subparsers = parser.add_subparsers(dest="command")
-
-    # TODO: add command to change sampling timeout dynamically
-    start_parser = subparsers.add_parser("start",
-                                         help="Run profiler with certain "
-                                         "arguments.")
-    start_parser.add_argument("-p", "--pid", type=int, required=True,
-                              help="PID of process you want to profile.")
-    start_parser.add_argument("-f", "--func", nargs="+", required=True,
-                              help="List of functions you want to profile "
-                              "in selected Python process.")
-    start_parser.add_argument("-t", "--timeout", type=float,
-                              help="Custom sampling timeout. Default is "
-                              f"{DEFAULT_SAMPLING_TIMEOUT} s")
-
-    stop_parser = subparsers.add_parser("stop",  # noqa: F841
-                                        help="Stop profiler.")
-
-    add_parser = subparsers.add_parser("add",
-                                       help="Add functions to profiling.")
-    add_parser.add_argument("-f", "--func", nargs="+", required=True,
-                            help="List of functions you want to profile "
-                            "in selected Python process.")
-
-    remove_parser = subparsers.add_parser("remove",
-                                          help="Remove functions from "
-                                          "profiling.")
-    remove_parser.add_argument("-f", "--func", nargs="+", required=True,
-                               help="List of functions you want to remove "
-                               "from profiling in selected Python process.")
-
-    results_parser = subparsers.add_parser("results",  # noqa: F841
-                                           help="Get intermediate profiling "
-                                           "results.")
-
-    status_parser = subparsers.add_parser("status",  # noqa: F841
-                                          help="Get profiler status.")
-
-    exit_parser = subparsers.add_parser("exit",  # noqa: F841
-                                        help="Exit Profiler CLI.")
-
-    return parser
-
-
-def process_command(args: argparse.Namespace, profiler: ProfilerController):
-    if args.command == "start":
-        profiler.start(pid=args.pid,
-                       functions_to_trace=args.func,
-                       sampling_timeout=args.timeout)
-
-    elif args.command == "stop":
-        profiler.stop()
-
-    elif args.command == "add":
-        profiler.add_functions_to_profile(args.func)
-
-    elif args.command == "remove":
-        profiler.remove_functions_from_profile(args.func)
-
-    elif args.command == "results":
-        profiler.write_output()
-
-    elif args.command == "status":
-        profiler.status()
-
-    elif args.command == "exit":
-        if profiler.running:
-            profiler.stop()
-        sys.exit(0)
-
-
-def main():
-    profiler = ProfilerController()
-    parser = build_parser()
-
-    if len(sys.argv) > 1:
-        args = parser.parse_args()
-        process_command(args, profiler)
-
-    print("Entering Profiler CLI. Type commands or 'exit' to quit.")
-    while True:
-        try:
-            command_line = input("> ").strip()
-            if not command_line:
-                continue
-
-            args = parser.parse_args(command_line.split())
-            process_command(args, profiler)
-        except SystemExit:
-            return
-        except KeyboardInterrupt:
-            print("\nInterrupted. Type 'exit' to quit.")
-        except Exception as e:
-            print(f"Error: {e}")
-
-
-if __name__ == "__main__":
-    main()
