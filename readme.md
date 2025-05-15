@@ -1,6 +1,5 @@
 ## Python Profiler
 
-[Original vacancy](https://internship.jetbrains.com/projects/1623).  
 Vacancy test task:  
 
 > Implement a Python tracing utility that measures the execution time of specific functions in a python program. You should be able to:
@@ -29,14 +28,17 @@ With this type profilers we'll always get some *innacurity*:
 
 ---
 
-If we want to trace program running in another process, we need to use [`ptrace`](https://en.wikipedia.org/wiki/Ptrace) system function. Problem is, that every OS has its own implementation... So I desiced to make task a little bit simpler and used Docker to get rid of platform-dependent stuff (getting crossplatform-working user experience is a rather non-trivial engineering task). To implement getting process call stack I used [LLDB](https://lldb.llvm.org/) with [cpython-lldb](https://github.com/malor/cpython-lldb) extension.  
+If we want to trace program running in another process, we need to use [`ptrace`](https://en.wikipedia.org/wiki/Ptrace) system function. Problem is, that every OS has its own implementation... So I desiced to make task a little bit simpler and used Docker to get rid of platform-dependent stuff (getting crossplatform-working user experience is very time consuming). To implement getting process call stack I used [LLDB](https://lldb.llvm.org/) with [cpython-lldb](https://github.com/malor/cpython-lldb) extension.  
 
-Unfortunately, my solution gives us a lot overhead when profiler is active (operating profiling process via LLDB [+ of course Python is not very fast]). So in this way we can't get high accuracy (I've got something around *150 ms per sample* [while sempling_timeout is 20 ms] which is not really fast).  
-Well, it's not ideal, but it's working. 🙃
+Unfortunately, my solution gives us a lot overhead when profiler is active (operating profiling process via LLDB + of course Python is not really fast). So in this way we can't get high accuracy: I've got something around *150 ms per sample*, while `sampling_timeout` is 20 ms.  
+
+It’s not ideal, but it works — already provides useful insights that could help in real-world applications. 🙃
+You can now retrieve the total runtime of specific functions and identify which ones are the most time-consuming. These are likely to be bottlenecks in your program.  
+A future improvement would be to implement call graph generation — this would show the full function call paths, providing additional tips for optimization.
 
 Let's get to profiler architecture overview.
 
-#### Profiler Porcess Structure
+### Profiler Process Structure
 ```
 Profiler Process
 ├── Main thread -- Operates Profiler CLI.
@@ -69,7 +71,7 @@ python3 profiler.py start -p <pid> -f disk_io heavy_computation network_request
 # > 
 ```
 
-Now you can operate profiler with following commands:
+After the profiler has started, you can interact with it live via the CLI by entering the following commands:
 ```bash
 usage: profiler.py [-h] {start,stop,add,remove,results,status,exit} ...
 
