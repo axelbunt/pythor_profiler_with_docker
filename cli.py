@@ -7,9 +7,9 @@ from prompt_toolkit.completion import WordCompleter
 import argparse
 import sys
 
-from controller import ProfilerController
-from sampler import DEFAULT_SAMPLING_TIMEOUT
-from ui_utils import pprint, prompt_session
+from profiler.controller import ProfilerController
+from profiler.sampler import DEFAULT_SAMPLING_TIMEOUT
+from profiler.ui import pprint, prompt_session
 
 
 CLI_COMMANDS = [
@@ -64,6 +64,7 @@ def build_args_parser() -> argparse.ArgumentParser:
 
 
 def run_cli_loop() -> None:
+    """Handle and process profiler commands in infinite interaction loop."""
     profiler = ProfilerController()
     parser = build_args_parser()
 
@@ -80,20 +81,21 @@ def run_cli_loop() -> None:
     while True:
         try:
             with patch_stdout():
-                command_line = prompt_session(
+                user_input = prompt_session(
                     "<arrow>➤ </arrow><prompt>Profiler</prompt>"
                     "<arrow> > </arrow>",
                     session
                 ).strip()
 
-            if not command_line:
+            if not user_input:
                 continue
 
-            args = parser.parse_args(command_line.split())
+            args = parser.parse_args(user_input.split())
             profiler.process_command(args)
         except SystemExit as e:
             if e.code != 0:
-                pprint("<error>⚠️ Invalid command. Type -h for help.</error>")
+                # TODO: add help command
+                pprint("<error>⚠️ Invalid command.</error>")
             else:
                 # TODO: resolve minor bug, after command exit statistics
                 # prints two times

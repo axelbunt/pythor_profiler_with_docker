@@ -1,3 +1,5 @@
+"""Additional functions for CLI pretty printing."""
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit import print_formatted_text
 from prompt_toolkit.styles import Style
