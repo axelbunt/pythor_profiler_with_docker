@@ -26,6 +26,8 @@ With this type profilers we'll always get some *innacurity*:
 
 > The actual amount of error is usually more than one sampling period. In fact, if a value is n times the sampling period, the expected error in it is the square-root of n sampling periods. If the sampling period is 0.01 seconds and foo's run-time is 1 second, the expected error in foo's run-time is 0.1 seconds. It is likely to vary this much on the average from one profiling run to the next. (Sometimes it will vary more.)[¹](https://web.archive.org/web/20120529075000/http://www.cs.utah.edu/dept/old/texinfo/as/gprof.html#:~:text=The%20actual%20amount,will%20vary%20more.)
 
+[comment]: # (TODO: add proof)
+
 ---
 
 If we want to trace program running in another process, we need to use [`ptrace`](https://en.wikipedia.org/wiki/Ptrace) system function. Problem is, that every OS has its own implementation... So I desiced to make task a little bit simpler and used Docker to get rid of platform-dependent stuff (getting crossplatform-working user experience is very time consuming). To implement getting process call stack I used [LLDB](https://lldb.llvm.org/) with [cpython-lldb](https://github.com/malor/cpython-lldb) extension.  
@@ -128,26 +130,18 @@ optional arguments:
 
 After target process is ended, you will get pretty-formatted result:
 ```bash
-> Profiler stopped.
-╭───────────────────┬──────────────────────────────╮
-│ Function Name     │ Approximate execution time   │
-├───────────────────┼──────────────────────────────┤
-│ heavy_computation │ 2.18 ± 0.2088                │
-│ disk_io           │ 2.01 ± 0.1789                │
-│ network_request   │ 1.82 ± 0.18                  │
-╰───────────────────┴──────────────────────────────╯
+Profiler stopped.
+╭───────────────────┬──────────────────────────────────╮
+│ Function Name     │ Approximate execution time (s)   │
+├───────────────────┼──────────────────────────────────┤
+│ bar               │ No Data Available                │
+│ disk_io           │ 1.5 ± 0.1732                     │
+│ foo               │ No Data Available                │
+│ heavy_computation │ 0.9 ± 0.1342                     │
+│ network_request   │ 1.52 ± 0.1744                    │
+╰───────────────────┴──────────────────────────────────╯
 ```
+> "No Data Available" is shown if no samples were captured for this function.
 
-### ToDo
+### TODO
 - Add command to CLI that allows to change sampling_timeout dynamically.
-- Redesign `results` command, so that it'll show all target functions. Now it shows only functions, that were sampled at least once. Results should look like this (if `heavy_computation` was not sampled):
-```bash
-> Profiler stopped.
-╭───────────────────┬──────────────────────────────╮
-│ Function Name     │ Approximate execution time   │
-├───────────────────┼──────────────────────────────┤
-│ heavy_computation │ No Data Available            │
-│ disk_io           │ 2.01 ± 0.1789                │
-│ network_request   │ 1.82 ± 0.18                  │
-╰───────────────────┴──────────────────────────────╯
-```
