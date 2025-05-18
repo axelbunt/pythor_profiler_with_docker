@@ -6,7 +6,7 @@ import argparse
 from math import sqrt
 from tabulate import tabulate
 import threading
-from typing import List, Set
+from typing import List, Set, Optional
 import psutil
 import sys
 
@@ -21,6 +21,7 @@ class ProfilerController:
         self.sampler_instance: Sampler = None
         self.sampling_thread: threading.Thread = None
         self.sampling_timeout: float = DEFAULT_SAMPLING_TIMEOUT
+        self.controller_lock = threading.Lock()
 
     def process_command(self, args: argparse.Namespace) -> None:
         if args.command == "start":
@@ -52,7 +53,7 @@ class ProfilerController:
             print("Invalid command.")
 
     def start(self, pid: int, functions_to_trace: List[str],
-              sampling_timeout: float = None) -> None:
+              sampling_timeout: Optional[float] = None) -> None:
         """
         Launch a profiler for the specified process and set of functions with
         selected sampling timeout.
@@ -103,8 +104,8 @@ class ProfilerController:
     def _watch_sampler(self):
         """Wait until sampler is stopped and then stop profiler."""
         self.sampling_thread.join()
-        if self.running:
-            self.stop()
+
+        self.stop()
 
     def add_functions_to_profile(self, func_to_add: List[str]) -> None:
         """
@@ -136,7 +137,7 @@ class ProfilerController:
         results = {"Function Name": [], "Approximate execution time": []}
 
         for fn, count in function_counts.items():
-            total_time = count * DEFAULT_SAMPLING_TIMEOUT
+            total_time = count * self.sampling_timeout
             error = sqrt(count) * self.sampling_timeout
             time_with_error = f"{round(total_time, 4)} ± {round(error, 4)}"
 
@@ -168,7 +169,10 @@ class ProfilerController:
         """
         Stop profiler and print profiling results.
         """
-        self.running = False
+        with self.controller_lock:
+            if not self.running:
+                return
+            self.running = False
+            print("Profiler stopped.")
 
-        print("Profiler stopped.")
         self.print_results()
