@@ -6,7 +6,7 @@ import argparse
 from math import sqrt
 from tabulate import tabulate
 import threading
-from typing import List, Set
+from typing import List, Set, Optional
 import psutil
 import sys
 
@@ -21,6 +21,7 @@ class ProfilerController:
         self.sampler_instance: Sampler = None
         self.sampling_thread: threading.Thread = None
         self.sampling_timeout: float = DEFAULT_SAMPLING_TIMEOUT
+        self.controller_lock = threading.Lock()
 
     def process_command(self, args: argparse.Namespace) -> None:
         if args.command == "start":
@@ -52,7 +53,7 @@ class ProfilerController:
             print("Invalid command.")
 
     def start(self, pid: int, functions_to_trace: List[str],
-              sampling_timeout: float = None) -> None:
+              sampling_timeout: Optional[float] = None) -> None:
         """
         Launch a profiler for the specified process and set of functions with
         selected sampling timeout.
@@ -103,46 +104,45 @@ class ProfilerController:
     def _watch_sampler(self):
         """Wait until sampler is stopped and then stop profiler."""
         self.sampling_thread.join()
-        if self.running:
-            self.stop()
+
+        self.stop()
 
     def add_functions_to_profile(self, func_to_add: List[str]) -> None:
-        """
-        Add a list of functions for tracing.
-        """
         self.functions_to_profile.update(func_to_add)
         print("Sampling functions:", self.functions_to_profile)
 
     def remove_functions_from_profile(self, func_to_remove: List[str]) -> None:
-        """
-        Remove a list of functions from tracing.
-        """
         self.functions_to_profile.difference_update(func_to_remove)
         print("Sampling functions:", self.functions_to_profile)
 
     def print_results(self) -> None:
-        """
-        Get profiling results and print it in console.
-        """
-        # TODO: add "(s)" to "Approximate execution time"
-        results = {"Function Name": [], "Approximate execution time": []}
+        """Get profiling results and print them in console."""
+        if not self.sampler_instance:
+            print("No sampling data available. Start profiler first.")
+            return
+
         function_counts = {}
+
+        function_names = list(self.functions_to_profile)
+        function_names.sort()
+        function_execution_times = ["No Data Available"] * len(function_names)
 
         for entry in self.sampler_instance.get_samples():
             fn = entry["function"]
             if fn in self.functions_to_profile:
                 function_counts[fn] = function_counts.get(fn, 0) + 1
 
-        results = {"Function Name": [], "Approximate execution time": []}
-
         for fn, count in function_counts.items():
-            total_time = count * DEFAULT_SAMPLING_TIMEOUT
+            total_time = count * self.sampling_timeout
             error = sqrt(count) * self.sampling_timeout
             time_with_error = f"{round(total_time, 4)} ± {round(error, 4)}"
 
-            results["Function Name"].append(fn)
-            results["Approximate execution time"].append(time_with_error)
+            function_execution_times[
+                function_names.index(fn)
+            ] = time_with_error
 
+        results = {"Function Name": function_names,
+                   "Approximate execution time (s)": function_execution_times}
         print(tabulate(results, headers="keys", tablefmt="rounded_outline"))
 
     def print_status(self) -> None:
@@ -165,10 +165,11 @@ class ProfilerController:
         print("=====================")
 
     def stop(self) -> None:
-        """
-        Stop profiler and print profiling results.
-        """
-        self.running = False
+        """Stop profiler and print profiling results."""
+        with self.controller_lock:
+            if not self.running:
+                return
+            self.running = False
+            print("Profiler stopped.")
 
-        print("Profiler stopped.")
         self.print_results()

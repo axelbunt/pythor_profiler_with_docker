@@ -7,6 +7,7 @@ from typing import List, Dict, Union
 import psutil
 import re
 import subprocess
+import threading
 
 
 DEFAULT_SAMPLING_TIMEOUT: float = 0.02  # In seconds
@@ -18,6 +19,7 @@ class Sampler:
         self.sampling_timeout = sampling_timeout
         self.is_running = False
         self.samples: List[Dict[float, str]] = []
+        self.samples_lock = threading.Lock()
         self.lldb_instance = None
 
     def start_sample_loop(self) -> None:
@@ -43,7 +45,8 @@ class Sampler:
                 break
 
             sample = self.get_name_of_running_function()
-            self.samples.append(sample)
+            with self.samples_lock:
+                self.samples.append(sample)
 
             # TODO: make async?
             time.sleep(self.sampling_timeout)
@@ -152,4 +155,5 @@ class Sampler:
         return "No function detected."
 
     def get_samples(self) -> List[Dict[float, str]]:
-        return self.samples
+        with self.samples_lock:
+            return self.samples.copy()
