@@ -78,7 +78,7 @@ https://docs.docker.com/engine/security/seccomp/
 
 In Docker container:
 ```bash
-python3 main.py &  # Run main program in bachground. Here is example program.
+python3 test.py &  # Run main program in bachground. Here is example program.
 # Returns:
 # [1] <pid>
 

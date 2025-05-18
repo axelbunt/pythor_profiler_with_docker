@@ -1,3 +1,5 @@
+"""Some basic functions to test the profiler."""
+
 import time
 
 
@@ -26,6 +28,7 @@ def network_request():
     time.sleep(2)
 
 
-heavy_computation()
-disk_io()
-network_request()
+if __name__ == "__main__":
+    heavy_computation()
+    disk_io()
+    network_request()
