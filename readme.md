@@ -34,18 +34,36 @@ If we want to trace program running in another process, we need to use [`ptrace`
 
 Unfortunately, my solution gives us a lot overhead when profiler is active (operating profiling process via LLDB + of course Python is not really fast). So in this way we can't get high accuracy: I've got something around *150 ms per sample*, while `sampling_timeout` is 20 ms.  
 
-It’s not ideal, but it works — already provides useful insights that could help in real-world applications. 🙃
+It's not ideal, but it works — already provides useful insights that could help in real-world applications. 🙃
 You can now retrieve the total runtime of specific functions and identify which ones are the most time-consuming. These are likely to be bottlenecks in your program.  
 A future improvement would be to implement call graph generation — this would show the full function call paths, providing additional tips for optimization.
 
 Let's get to profiler architecture overview.
 
-### Profiler Process Structure
-```
-Profiler Process
-├── Main thread -- Operates Profiler CLI.
-└── Sampling thread -- Gets sample of selected Python Process every \delta_t seconds. Has its own LLDB instance, which do all sampling stuff.
-```
+### Profiler Architecture and Internal Working
+
+The profiler operates as a separate process that monitors your target Python application through LLDB debugging. Here's how the components work together:
+
+#### Profiler Process Structure
+- **Main Thread**: Responsible for the Profiler CLI interface, processing user commands, and controlling the profiling session. It handles commands like starting/stopping profiling, adding/removing functions to track, and retrieving results.
+- **Sampling Thread**: The workhorse of the profiler that runs independently from the main thread. It:
+  - Creates and manages its own LLDB instance
+  - Connects to the target Python process using the provided PID
+  - Samples the target process stack trace at regular intervals (every δt seconds, configurable via the timeout parameter)
+  - Captures and stores the name of the currently executing function at each sample point
+- **Watcher Thread**: A dedicated thread that monitors the sampling thread:
+  - Joins to the sampling thread and waits until it ends
+  - Stops the profiler once the sampling thread completes  
+  - This design prevents the main thread from being blocked, allowing continuous interaction with the CLI
+
+#### Data Flow
+1. User initiates profiling through CLI, specifying target process and functions
+2. Main thread creates a sampling thread and passes the configuration
+3. Sampling thread collects stack traces at regular intervals
+4. Data is stored in a thread-safe shared data structure (use thread locks)
+5. When user requests results (intermediate or final), the main thread processes the collected data and displays it in a formatted table
+
+This implementation satisfies the key requirements by providing profiling without modifying the target code, and allowing functions to be dynamically added or removed from profiling during execution.
 
 ### Getting Started with Sample Profiler
 Build and run docker contaner:
